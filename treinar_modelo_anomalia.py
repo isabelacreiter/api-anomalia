@@ -1,7 +1,11 @@
 import pandas as pd
 import pickle
+import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # 1. Carregar CSV
 try:
@@ -17,7 +21,7 @@ if not all(col in df.columns for col in required_columns):
     exit(1)
 
 # 2. Selecionar colunas importantes
-# Ajuste os nomes se no seu CSV estiver diferente
+df_original = df.copy()
 df = df[['elapsed', 'success', 'timeStamp']]
 
 # 3. Limpeza de dados
@@ -42,12 +46,36 @@ model = IsolationForest(
 )
 
 model.fit(X_scaled)
+predictions = model.predict(X_scaled)
 
-# 6. Salvar modelo e scaler
+# 6. Análise de Resultados
+print("\n" + "="*60)
+print("📊 RELATÓRIO DE TREINAMENTO DO MODELO DE ANOMALIAS")
+print("="*60)
+
+# Estatísticas básicas
+total_samples = len(df)
+anomalies = (predictions == -1).sum()
+normal = (predictions == 1).sum()
+anomaly_percentage = (anomalies / total_samples) * 100
+
+print(f"\n✓ Total de amostras: {total_samples}")
+print(f"✓ Amostras normais: {normal} ({(normal/total_samples)*100:.2f}%)")
+print(f"✓ Anomalias detectadas: {anomalies} ({anomaly_percentage:.2f}%)")
+
+# Estatísticas dos dados
+print(f"\n📈 Estatísticas dos dados de entrada:")
+print(f"  • Latência (elapsed) - Min: {df['elapsed'].min()}, Max: {df['elapsed'].max()}, Média: {df['elapsed'].mean():.2f}")
+print(f"  • Taxa de sucesso - {(df['success'].mean()*100):.2f}%")
+
+# 7. Salvar modelo e scaler
 with open('modelo_anomalia.pkl', 'wb') as f:
     pickle.dump(model, f)
 
 with open('scaler.pkl', 'wb') as f:
     pickle.dump(scaler, f)
 
-print("Modelo de anomalia treinado e salvo com sucesso!")
+print(f"\n✅ Modelo de anomalia treinado e salvo com sucesso!")
+print(f"   - modelo_anomalia.pkl")
+print(f"   - scaler.pkl")
+print("="*60 + "\n")

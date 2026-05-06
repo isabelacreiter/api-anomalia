@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 Dashboard de Detecção de Anomalias</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 2px dashed #667eea;
+        }
+
+        .upload-section h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .file-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .alert.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .alert.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            display: block;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .metric-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .metric-card.danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .metric-card.warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .metric-card.success {
+            background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .results-table thead {
+            background: #f8f9fa;
+        }
+
+        .results-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .results-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .anomaly-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .anomaly-badge.normal {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .anomaly-badge.anomaly {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+
+        @media (max-width: 768px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            .file-input-wrapper {
+                flex-direction: column;
+            }
+            
+            input[type="file"], button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚨 Dashboard de Detecção de Anomalias</h1>
+            <p>Análise inteligente de carga e detecção automática de comportamentos anormais</p>
+        </header>
+
+        <div class="content">
+            <!-- Status da API -->
+            <div id="statusAlert" class="alert"></div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h2>📤 Upload de Arquivo CSV</h2>
+                <p style="margin-bottom: 15px; color: #666;">Envie um arquivo CSV do JMeter com as colunas: elapsed, success, timeStamp</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="csvFile" accept=".csv" />
+                    <button onclick="uploadFile()">Analisar</button>
+                    <button onclick="downloadSample()" style="background: #764ba2;">📥 Download CSV Exemplo</button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processando arquivo...</p>
+            </div>
+
+            <!-- Results Section (Hidden until data loaded) -->
+            <div id="resultsSection" style="display: none;">
+                <!-- Alert for Anomalies -->
+                <div id="anomalyAlert" class="alert"></div>
+
+                <!-- Metrics -->
+                <div class="section-title">📊 Métricas de Desempenho</div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h3>Total de Registros</h3>
+                        <div class="value" id="totalRecords">0</div>
+                    </div>
+                    <div class="metric-card success">
+                        <h3>Registros Normais</h3>
+                        <div class="value" id="normalRecords">0</div>
+                    </div>
+                    <div class="metric-card danger">
+                        <h3>🚨 Anomalias</h3>
+                        <div class="value" id="anomalyRecords">0</div>
+                    </div>
+                    <div class="metric-card warning">
+                        <h3>Taxa de Anomalia</h3>
+                        <div class="value" id="anomalyPercentage">0%</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Latência Média (ms)</h3>
+                        <div class="value" id="avgLatency">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Taxa de Sucesso</h3>
+                        <div class="value" id="successRate">0%</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="section-title">📈 Visualizações</div>
+                <div class="charts-section">
+                    <div class="chart-container">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="anomalyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="section-title">📋 Detalhes dos Registros</div>
+                <div style="overflow-x: auto;">
+                    <table class="results-table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Latência (ms)</th>
+                                <th>Sucesso</th>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <p style="text-align: center; color: #999; margin-top: 15px;">Mostrando primeiros 50 registros</p>
+            </div>
+
+            <!-- No Data Message -->
+            <div class="no-data" id="noData">
+                <p>👆 Envie um arquivo CSV para começar a análise</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>🔬 Anomaly Detection API v1.0 | Powered by Isolation Forest (Scikit-learn)</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let latencyChart, anomalyChart;
+
+        // Check API Status
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/health`, { mode: 'no-cors' });
+                // If request succeeds (even with no-cors), API is running
+                showAlert('statusAlert', 'success', '✅ API conectada e funcionando!');
+            } catch (error) {
+                showAlert('statusAlert', 'danger', '❌ Erro: API não está acessível. Certifique-se de iniciar o servidor Flask.');
+            }
+        }
+
+        function showAlert(elementId, type, message) {
+            const alert = document.getElementById(elementId);
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            alert.style.display = 'block';
+        }
+
+        async function uploadFile() {
+            const file = document.getElementById('csvFile').files[0];
+            if (!file) {
+                showAlert('statusAlert', 'warning', '⚠️ Selecione um arquivo CSV primeiro');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('noData').style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao processar arquivo');
+                }
+
+                // Process results
+                processResults(data);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('resultsSection').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                showAlert('statusAlert', 'danger', `❌ ${error.message}`);
+            }
+        }
+
+        function processResults(data) {
+            const totalRecords = data.total_registros;
+            const anomalies = data.anomalias_detectadas;
+            const normal = totalRecords - anomalies;
+            const anomalyPercentage = (anomalies / totalRecords * 100).toFixed(2);
+
+            // Update metrics
+            document.getElementById('totalRecords').textContent = totalRecords;
+            document.getElementById('normalRecords').textContent = normal;
+            document.getElementById('anomalyRecords').textContent = anomalies;
+            document.getElementById('anomalyPercentage').textContent = `${anomalyPercentage}%`;
+
+            // Calculate latency and success metrics
+            const latencies = data.dados.map(d => d.elapsed);
+            const avgLatency = (latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(2);
+            const successCount = data.dados.filter(d => d.success == 1).length;
+            const successRate = ((successCount / totalRecords) * 100).toFixed(2);
+
+            document.getElementById('avgLatency').textContent = avgLatency;
+            document.getElementById('successRate').textContent = `${successRate}%`;
+
+            // Show anomaly alert
+            if (anomalyPercentage > 5) {
+                showAlert('anomalyAlert', 'danger', `🚨 ALERTA: ${anomalyPercentage}% de anomalias detectadas! Taxa acima do limite de 5%.`);
+            } else {
+                showAlert('anomalyAlert', 'success', `✅ Sistema dentro dos parâmetros normais (${anomalyPercentage}% de anomalias).`);
+            }
+
+            // Update charts
+            updateCharts(data.dados, latencies);
+
+            // Update table
+            updateTable(data.dados);
+        }
+
+        function updateCharts(dados, latencies) {
+            // Latency Chart
+            const ctx1 = document.getElementById('latencyChart').getContext('2d');
+            
+            if (latencyChart) {
+                latencyChart.destroy();
+            }
+
+            latencyChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: dados.slice(0, 50).map((_, i) => `#${i+1}`),
+                    datasets: [{
+                        label: 'Latência (ms)',
+                        data: latencies.slice(0, 50),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Anomaly Distribution Chart
+            const anomalyCount = dados.filter(d => d.anomalia == -1).length;
+            const normalCount = dados.length - anomalyCount;
+            const ctx2 = document.getElementById('anomalyChart').getContext('2d');
+
+            if (anomalyChart) {
+                anomalyChart.destroy();
+            }
+
+            anomalyChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Normal', 'Anomalia'],
+                    datasets: [{
+                        data: [normalCount, anomalyCount],
+                        backgroundColor: ['#30cfd0', '#f5576c'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTable(dados) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            dados.slice(0, 50).forEach((row, index) => {
+                const tr = document.createElement('tr');
+                const statusBadge = row.anomalia === -1 ? 
+                    '<span class="anomaly-badge anomaly">🚨 ANOMALIA</span>' : 
+                    '<span class="anomaly-badge normal">✅ Normal</span>';
+
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${row.elapsed}</td>
+                    <td>${row.success ? '✅ Sim' : '❌ Não'}</td>
+                    <td>${new Date(row.timeStamp * 1000).toLocaleString()}</td>
+                    <td>${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function downloadSample() {
+            const csv = `elapsed,success,timeStamp
+1174,1,1776299039968
+1188,1,1776299041259
+1116,1,1776299042434
+1435,1,1776299043644
+1227,1,1776299044782
+950,0,1776299090393`;
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sample_jmeter.csv';
+            a.click();
+        }
+
+        // Initialize
+        window.onload = () => {
+            checkStatus();
+        };
+    </script>
+</body>
+</html>
